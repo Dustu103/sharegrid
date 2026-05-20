@@ -14,7 +14,9 @@ frontend/.env
 *.db
 *.db-wal
 *.db-shm
-backend/data/
+backend/data/*.db
+backend/data/*.db-wal
+backend/data/*.db-shm
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 # keep docker-compose files, ignore generated artifacts
