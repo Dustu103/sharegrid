@@ -8,6 +8,7 @@ yarn-error.log
 .env
 backend/.env
 frontend/.env
+frontend/env.json
 !**/.env.example
 
 # ── Database ─────────────────────────────────────────────────────────────────

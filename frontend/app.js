@@ -8,7 +8,7 @@
 const IS_DEV    = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 const WS_URL    = IS_DEV 
   ? `ws://${location.hostname}:3001` 
-  : `wss://your-backend-app.onrender.com`;
+  : `wss://sharegrid-ffxr.onrender.com`;
 const TILE_SIZE = 14;   // px per tile at zoom=1
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 15000];
 
@@ -223,9 +223,45 @@ joinBtn.addEventListener('click', () => {
 });
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
-function connectWS() {
+async function connectWS() {
   setConnStatus('connecting');
-  ws = new WebSocket(WS_URL);
+
+  let targetUrl = WS_URL;
+  let loaded = false;
+
+  // 1. Try fetching from Vercel Serverless Config API (production env validation)
+  try {
+    const apiRes = await fetch('/api/config');
+    if (apiRes.ok) {
+      const apiCfg = await apiRes.json();
+      if (apiCfg.WS_URL) {
+        targetUrl = apiCfg.WS_URL;
+        loaded = true;
+        console.log('Using WebSocket URL from Vercel environment:', targetUrl);
+      }
+    }
+  } catch (err) {
+    // Network error or local client running without proxy support
+  }
+
+  // 2. If Vercel env is not loaded, try fetching from local env.json override (local development)
+  if (!loaded) {
+    try {
+      const localRes = await fetch('env.json');
+      if (localRes.ok) {
+        const localCfg = await localRes.json();
+        if (localCfg.WS_URL) {
+          targetUrl = localCfg.WS_URL;
+          loaded = true;
+          console.log('Using WebSocket override URL from env.json:', targetUrl);
+        }
+      }
+    } catch (err) {
+      // Local config file not found (normal in clean environments)
+    }
+  }
+
+  ws = new WebSocket(targetUrl);
 
   ws.onopen = () => {
     reconnectIdx = 0;
