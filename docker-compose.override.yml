@@ -1,0 +1,36 @@
+# docker-compose.override.yml
+# Auto-loaded in development (docker compose up).
+# Overrides production settings with hot-reload + debug config.
+
+version: '3.9'
+
+services:
+  backend:
+    build:
+      target: development
+    command: ["npx", "nodemon", "server.js", "--watch", ".", "--ext", "js,json"]
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      # Mount source for hot reload (node_modules kept in container)
+      - ./backend:/app
+      - /app/node_modules
+      - backend_data:/app/data
+    ports:
+      - "3001:3001"
+      - "9229:9229"   # Node.js inspector port
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      # Mount source live — no rebuild needed for HTML/CSS/JS changes
+      - ./frontend:/app
+    ports:
+      - "5173:5173"
+
+  redis:
+    ports:
+      - "6379:6379"   # expose Redis in dev for local debugging

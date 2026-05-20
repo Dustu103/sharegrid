@@ -1,0 +1,28 @@
+{
+  "token_hmac_secret_key": "CHANGE_ME_IN_PRODUCTION_32chars+",
+  "api_key": "CHANGE_ME_API_KEY",
+  "admin": true,
+  "admin_password": "CHANGE_ME_ADMIN_PASSWORD",
+  "admin_secret": "CHANGE_ME_ADMIN_SECRET",
+  "allowed_origins": ["*"],
+
+  "engine": "redis",
+  "redis_address": "redis://redis:6379",
+  "redis_prefix": "sharegrid",
+
+  "port": 8000,
+  "admin_port": 8001,
+
+  "namespaces": [
+    {
+      "name": "grid",
+      "publish": true,
+      "subscribe_to_publish": true,
+      "history_size": 100,
+      "history_ttl": "60s",
+      "presence": true
+    }
+  ],
+
+  "log_level": "info"
+}

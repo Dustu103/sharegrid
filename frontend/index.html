@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShareGrid — Real-Time Tile Battle</title>
+  <meta name="description" content="A real-time multiplayer grid battle. Capture tiles, own territory, climb the leaderboard." />
+  <meta property="og:title" content="ShareGrid" />
+  <meta property="og:description" content="Real-time multiplayer tile capture game" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- JOIN MODAL                                                             -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div id="join-overlay" class="overlay active">
+    <div class="modal" id="join-modal">
+      <div class="modal-glow"></div>
+      <div class="modal-content">
+        <div class="modal-logo">
+          <div class="logo-grid">
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+          </div>
+          <h1>ShareGrid</h1>
+          <p class="modal-tagline">Real-time tile battle. Capture, Dominate, Win.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="username-input">Your Name</label>
+          <input
+            type="text"
+            id="username-input"
+            class="text-input"
+            placeholder="Enter username..."
+            maxlength="20"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <span class="input-hint">2–20 characters</span>
+        </div>
+
+        <div class="color-preview-row">
+          <span>Your color:</span>
+          <div id="color-preview-swatch" class="color-swatch"></div>
+          <span id="color-preview-label" class="color-label">—</span>
+        </div>
+
+        <button id="join-btn" class="btn-primary" disabled>
+          <span>Enter the Grid</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+
+        <div class="modal-stats" id="modal-stats">
+          <div class="stat-chip"><span id="stat-online">—</span> online</div>
+          <div class="stat-chip"><span id="stat-tiles">—</span> tiles claimed</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- MAIN APP                                                               -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div id="app" class="app hidden">
+
+    <!-- Header -->
+    <header class="header" id="main-header">
+      <div class="header-left">
+        <div class="header-logo">
+          <div class="logo-grid-sm">
+            <span></span><span></span>
+            <span></span><span></span>
+          </div>
+          <span class="header-title">ShareGrid</span>
+        </div>
+        <div class="connection-badge" id="conn-badge">
+          <span class="conn-dot"></span>
+          <span id="conn-label">Connecting…</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="header-stat">
+          <span class="stat-num" id="hdr-online">0</span>
+          <span class="stat-lbl">online</span>
+        </div>
+        <div class="header-divider"></div>
+        <div class="header-stat">
+          <span class="stat-num" id="hdr-claimed">0</span>
+          <span class="stat-lbl">/ 2000 claimed</span>
+        </div>
+        <div class="header-divider"></div>
+        <div class="header-stat">
+          <span class="stat-num" id="hdr-ping">—</span>
+          <span class="stat-lbl">ms</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="user-card" id="user-card">
+          <div class="user-swatch" id="hdr-color"></div>
+          <span id="hdr-username">—</span>
+          <span class="user-tiles-badge" id="hdr-tiles">0 tiles</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main layout -->
+    <div class="layout">
+
+      <!-- Canvas container -->
+      <div class="canvas-wrapper" id="canvas-wrapper">
+        <canvas id="grid-canvas"></canvas>
+
+        <!-- Minimap -->
+        <div class="minimap-container" id="minimap-container">
+          <canvas id="minimap-canvas"></canvas>
+          <div class="minimap-viewport" id="minimap-viewport"></div>
+        </div>
+
+        <!-- Zoom controls -->
+        <div class="zoom-controls">
+          <button id="zoom-in-btn"  class="zoom-btn" title="Zoom in">+</button>
+          <span   id="zoom-level"   class="zoom-level">100%</span>
+          <button id="zoom-out-btn" class="zoom-btn" title="Zoom out">−</button>
+          <button id="zoom-reset-btn" class="zoom-btn zoom-reset" title="Reset view">⌂</button>
+        </div>
+
+        <!-- Cooldown overlay bar -->
+        <div class="cooldown-bar-wrap" id="cooldown-bar-wrap">
+          <div class="cooldown-bar" id="cooldown-bar"></div>
+          <span class="cooldown-label" id="cooldown-label">Ready!</span>
+        </div>
+
+        <!-- Toast container -->
+        <div class="toast-container" id="toast-container"></div>
+
+        <!-- Hover tooltip -->
+        <div class="tile-tooltip" id="tile-tooltip"></div>
+      </div>
+
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+
+        <!-- My Stats -->
+        <section class="sidebar-section my-stats-section">
+          <h2 class="section-title">My Territory</h2>
+          <div class="territory-stats">
+            <div class="territory-ring" id="territory-ring">
+              <svg viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="34" class="ring-bg"/>
+                <circle cx="40" cy="40" r="34" class="ring-fill" id="ring-fill"/>
+              </svg>
+              <div class="ring-center">
+                <span id="my-tiles-count">0</span>
+                <small>tiles</small>
+              </div>
+            </div>
+            <div class="territory-info">
+              <div class="info-row">
+                <span>Total captured</span>
+                <strong id="my-total-captured">0</strong>
+              </div>
+              <div class="info-row">
+                <span>Current owned</span>
+                <strong id="my-current-tiles">0</strong>
+              </div>
+              <div class="info-row">
+                <span>Board %</span>
+                <strong id="my-board-pct">0%</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Leaderboard -->
+        <section class="sidebar-section leaderboard-section">
+          <h2 class="section-title">Leaderboard</h2>
+          <ol class="leaderboard-list" id="leaderboard-list">
+            <li class="lb-placeholder">Waiting for players…</li>
+          </ol>
+        </section>
+
+        <!-- Live Feed -->
+        <section class="sidebar-section feed-section">
+          <h2 class="section-title">Live Feed</h2>
+          <ul class="feed-list" id="feed-list"></ul>
+        </section>
+
+        <!-- Online Players -->
+        <section class="sidebar-section players-section">
+          <h2 class="section-title">Online <span class="online-count-badge" id="online-badge">0</span></h2>
+          <div class="players-grid" id="players-grid"></div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Reconnecting overlay -->
+  <div class="reconnect-overlay hidden" id="reconnect-overlay">
+    <div class="reconnect-content">
+      <div class="spinner"></div>
+      <p>Reconnecting…</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
