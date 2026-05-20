@@ -50,8 +50,8 @@ const server = http.createServer(app);
   // Connect to Redis (non-blocking — app works without it)
   await redisClient.connect();
 
-  // Restore persisted grid state from SQLite
-  engine.restoreGridFromDb();
+  // Restore persisted grid state from Postgres
+  await engine.restoreGridFromDb();
 
   // Attach WebSocket (Redis clients injected inside)
   wsServer.attach(server);

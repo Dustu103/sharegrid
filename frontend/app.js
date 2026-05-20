@@ -4,9 +4,99 @@
  */
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const WS_URL    = `ws://${location.hostname}:3001`;
+// Change 'your-backend-app.onrender.com' to your actual Render backend URL after deploying!
+const IS_DEV    = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const WS_URL    = IS_DEV 
+  ? `ws://${location.hostname}:3001` 
+  : `wss://your-backend-app.onrender.com`;
 const TILE_SIZE = 14;   // px per tile at zoom=1
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 15000];
+
+// ── Sound Synthesizer (Web Audio API) ──────────────────────────────────────────
+const SoundManager = {
+  ctx: null,
+  isMuted: localStorage.getItem('sg_muted') === 'true',
+
+  init() {
+    if (this.ctx) return;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      this.ctx = new AudioContextClass();
+    }
+  },
+
+  toggle() {
+    this.isMuted = !this.isMuted;
+    localStorage.setItem('sg_muted', this.isMuted);
+    return this.isMuted;
+  },
+
+  playSuccess() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, this.ctx.currentTime); // D5
+    osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.08); // A5
+    
+    gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+    
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.1);
+  },
+
+  playError() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(130, this.ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(85, this.ctx.currentTime + 0.15);
+    
+    gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.16);
+    
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.16);
+  },
+
+  playAlert() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, this.ctx.currentTime); // A4
+    osc.frequency.setValueAtTime(659.25, this.ctx.currentTime + 0.05); // E5
+    
+    gain.gain.setValueAtTime(0.03, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.18);
+    
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.18);
+  }
+};
 
 const COLOR_PALETTE = [
   '#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c',
@@ -79,6 +169,11 @@ const zoomOutBtn     = document.getElementById('zoom-out-btn');
 const zoomResetBtn   = document.getElementById('zoom-reset-btn');
 const zoomLevelEl    = document.getElementById('zoom-level');
 const tileTooltip    = document.getElementById('tile-tooltip');
+const audioToggleBtn = document.getElementById('audio-toggle-btn');
+
+// Set initial audio toggle state
+audioToggleBtn.textContent = SoundManager.isMuted ? '🔇' : '🔊';
+audioToggleBtn.title = SoundManager.isMuted ? 'Unmute Audio' : 'Mute Audio';
 
 // ── Color Picker (injected into modal) ────────────────────────────────────────
 function buildColorPicker() {
@@ -214,15 +309,21 @@ function onWelcome(msg) {
 
 function onTileUpdated(msg) {
   const key = `${msg.row}:${msg.col}`;
+  const isMe = msg.owner.userId === userId;
   tileGrid[key] = msg.owner;
   if (msg.leaderboard) updateLeaderboard(msg.leaderboard);
   addFeedItem(msg);
   renderAll();
   updateMyStats();
   updateHeaderStats();
+
+  if (!isMe) {
+    SoundManager.playAlert();
+  }
 }
 
 function onTileRejected(msg) {
+  SoundManager.playError();
   if (msg.reason === 'COOLDOWN_ACTIVE') startCooldown(msg.cooldownMs);
   else if (msg.reason === 'RATE_LIMITED') showToast('Slow down!', 'warn');
   else if (msg.reason === 'TILE_LOCKED')  showToast('Tile locked!', 'warn');
@@ -367,9 +468,14 @@ canvas.addEventListener('click', e => {
   const col = Math.floor((e.offsetX - panX) / tileW);
   const row = Math.floor((e.offsetY - panY) / tileH);
   if (row < 0 || row >= gridRows || col < 0 || col >= gridCols) return;
-  if (Date.now() < cooldownUntil) { showToast('Still on cooldown!', 'warn'); return; }
+  if (Date.now() < cooldownUntil) { 
+    showToast('Still on cooldown!', 'warn'); 
+    SoundManager.playError();
+    return; 
+  }
   send('CLAIM_TILE', { row, col });
   startCooldown(cooldownMs);
+  SoundManager.playSuccess();
 });
 
 // ── Hover tooltip ─────────────────────────────────────────────────────────────
@@ -431,6 +537,11 @@ canvas.addEventListener('wheel', e => {
 zoomInBtn.addEventListener('click',    () => adjustZoom(0.2));
 zoomOutBtn.addEventListener('click',   () => adjustZoom(-0.2));
 zoomResetBtn.addEventListener('click', () => { zoom = 1; centreView(); zoomLevelEl.textContent = '100%'; });
+audioToggleBtn.addEventListener('click', () => {
+  const isMuted = SoundManager.toggle();
+  audioToggleBtn.textContent = isMuted ? '🔇' : '🔊';
+  audioToggleBtn.title = isMuted ? 'Unmute Audio' : 'Mute Audio';
+});
 
 function adjustZoom(delta) {
   const cx = canvas.width / 2, cy = canvas.height / 2;

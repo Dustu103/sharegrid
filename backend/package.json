@@ -12,11 +12,11 @@
   "author": "ShareGrid Team",
   "license": "MIT",
   "dependencies": {
-    "better-sqlite3": "^9.4.3",
     "cors":           "^2.8.5",
     "dotenv":         "^16.4.1",
     "express":        "^4.18.2",
     "ioredis":        "^5.3.2",
+    "pg":             "^8.11.3",
     "uuid":           "^9.0.0",
     "ws":             "^8.14.2"
   },

@@ -5,7 +5,7 @@
 
 const RULES  = require('./rules');
 const store  = require('../data/store');
-const db     = require('../data/sqliteDb');
+const db     = require('../data/postgresDb');
 const logger = require('../utils/logger');
 
 function claimTile(userId, row, col) {
@@ -89,8 +89,8 @@ function unregisterUser(userId) {
   store.removeUser(userId);
 }
 
-function restoreGridFromDb() {
-  const rows = db.loadAllTiles();
+async function restoreGridFromDb() {
+  const rows = await db.loadAllTiles();
   for (const r of rows) {
     store.grid.set(`${r.row}:${r.col}`, {
       userId: r.user_id, username: r.username, color: r.color,

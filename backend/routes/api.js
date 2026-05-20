@@ -8,7 +8,7 @@
 const express = require('express');
 const router  = express.Router();
 const store   = require('../data/store');
-const db      = require('../data/sqliteDb');
+const db      = require('../data/postgresDb');
 const RULES   = require('../game/rules');
 
 /**
@@ -43,8 +43,8 @@ router.get('/leaderboard', (_req, res) => {
  * GET /api/stats
  * Global game statistics.
  */
-router.get('/stats', (_req, res) => {
-  const dbStats   = db.getStats();
+router.get('/stats', async (_req, res) => {
+  const dbStats   = await db.getStats();
   const onlineNow = store.getAllUsers().length;
   const tiles     = store.getAllTiles();
   const claimed   = Object.keys(tiles).length;
@@ -68,11 +68,11 @@ router.get('/stats', (_req, res) => {
  * GET /api/history?limit=50
  * Recent tile capture events.
  */
-router.get('/history', (req, res) => {
+router.get('/history', async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   res.json({
     ok: true,
-    events: db.getRecentEvents(limit),
+    events: await db.getRecentEvents(limit),
     timestamp: Date.now(),
   });
 });
