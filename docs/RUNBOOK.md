@@ -31,13 +31,33 @@ TILE_LOCK_MS=1000
 
 ---
 
-## 2. Running the Services Locally
+## 2. Production & Vercel Environment Configuration
+
+For static client HTML/JS files deployed on **Vercel**, direct access to environment variables is not natively possible. To handle this cleanly and securely without requiring any complex bundler overhead, ShareGrid utilizes a **Vercel Serverless Function** located at `frontend/api/config.js`.
+
+### How to configure on Vercel:
+1. Log into your **Vercel Dashboard** and open your frontend project.
+2. Go to **Settings** -> **Environment Variables**.
+3. Create a new variable:
+   - **Key:** `WS_URL`
+   - **Value:** `wss://sharegrid-ffxr.onrender.com` (Your live Render backend URL).
+4. Save the variable and trigger a new deployment.
+
+### Dynamic Resolution Order in `frontend/app.js`:
+When the client boots up, it checks configuration layers in this order:
+1. **`/api/config` (Vercel Serverless API):** Fetches the environment payload from Vercel's runtime serverless function. If found, it connects directly.
+2. **`env.json` (Local Override):** If the API returns a 404 or fails (such as in local dev servers), it looks for a local, git-ignored `env.json` file.
+3. **Dynamic Fallback:** If both fail, it falls back to a hostname inspection (`localhost` -> local WebSocket, otherwise Render production WebSocket).
+
+---
+
+## 3. Running the Services Locally
 
 Since the root monorepo workspace has been dissolved, `/frontend` and `/backend` exist as completely independent projects. 
 
 You must spin them up inside their respective directories:
 
-### Step 2.1: Launch the Backend Server
+### Step 3.1: Launch the Backend Server
 Open a terminal window and run:
 ```bash
 # Navigate to backend
@@ -50,7 +70,7 @@ npm install
 npm run dev
 ```
 
-### Step 2.2: Launch the Frontend Web Server
+### Step 3.2: Launch the Frontend Web Server
 Open a second terminal window and run:
 ```bash
 # Navigate to frontend
@@ -67,7 +87,7 @@ The terminal will print your local hosting URL (e.g., `http://localhost:5173`). 
 
 ---
 
-## 3. Engineering & Coding Conventions
+## 4. Engineering & Coding Conventions
 
 To maintain a clean codebase, every developer must adhere to these structural guidelines:
 
