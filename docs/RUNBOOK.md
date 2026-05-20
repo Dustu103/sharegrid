@@ -40,13 +40,13 @@ For static client HTML/JS files deployed on **Vercel**, direct access to environ
 2. Go to **Settings** -> **Environment Variables**.
 3. Create a new variable:
    - **Key:** `WS_URL`
-   - **Value:** `wss://sharegrid-ffxr.onrender.com` (Your live Render backend URL).
+   - **Value:** `wss://<YOUR_RENDER_SUBDOMAIN>.onrender.com` (Your live Render backend URL).
 4. Save the variable and trigger a new deployment.
 
 ### Dynamic Resolution Order in `frontend/app.js`:
 When the client boots up, it checks configuration layers in this order:
 1. **`/api/config` (Vercel Serverless API):** Fetches the environment payload from Vercel's runtime serverless function. If found, it connects directly.
-2. **`env.json` (Local Override):** If the API returns a 404 or fails (such as in local dev servers), it looks for a local, git-ignored `env.json` file.
+2. **`.env` (Local Override):** If the API returns a 404 or fails (such as in local dev servers), a custom parser dynamically loads your local, git-ignored `frontend/.env` file.
 3. **Dynamic Fallback:** If both fail, it falls back to a hostname inspection (`localhost` -> local WebSocket, otherwise Render production WebSocket).
 
 ---

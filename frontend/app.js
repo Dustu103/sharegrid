@@ -222,6 +222,34 @@ joinBtn.addEventListener('click', () => {
   connectWS();
 });
 
+// ── Local .env Parser (Vanilla client support) ──────────────────────────────────
+async function parseEnvFile() {
+  try {
+    const res = await fetch('.env');
+    if (res.ok) {
+      const text = await res.text();
+      const env = {};
+      text.split('\n').forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) return;
+        const idx = trimmed.indexOf('=');
+        if (idx !== -1) {
+          const key = trimmed.substring(0, idx).trim();
+          let val = trimmed.substring(idx + 1).trim();
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.substring(1, val.length - 1);
+          }
+          env[key] = val;
+        }
+      });
+      return env;
+    }
+  } catch (err) {
+    // Fail silently
+  }
+  return null;
+}
+
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 async function connectWS() {
   setConnStatus('connecting');
@@ -244,20 +272,13 @@ async function connectWS() {
     // Network error or local client running without proxy support
   }
 
-  // 2. If Vercel env is not loaded, try fetching from local env.json override (local development)
+  // 2. If Vercel env is not loaded, try fetching from local .env override (local development)
   if (!loaded) {
-    try {
-      const localRes = await fetch('env.json');
-      if (localRes.ok) {
-        const localCfg = await localRes.json();
-        if (localCfg.WS_URL) {
-          targetUrl = localCfg.WS_URL;
-          loaded = true;
-          console.log('Using WebSocket override URL from env.json:', targetUrl);
-        }
-      }
-    } catch (err) {
-      // Local config file not found (normal in clean environments)
+    const env = await parseEnvFile();
+    if (env && env.WS_URL) {
+      targetUrl = env.WS_URL;
+      loaded = true;
+      console.log('Using WebSocket override URL from local .env:', targetUrl);
     }
   }
 
